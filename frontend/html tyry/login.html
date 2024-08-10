@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+</head>
+<body>
+    <h1>Login</h1>
+    <form id="loginForm">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username"><br><br>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password"><br><br>
+        <button type="button" onclick="login()">Login</button>
+    </form>
+
+    <script>
+        let username = '';
+        function login() {
+             username = document.getElementById('username').value;
+             
+            const password = document.getElementById('password').value;
+            // You can add client-side validation here if needed
+
+            const loginURL = `http://192.168.56.222:8080/homepage/user/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+
+            fetch(loginURL)
+            .then(response => {
+        // Log the response status
+        console.log('Response Status:', response.status);
+        // Return the response as JSON
+        return response.json();
+    })
+            .then(data => {
+                if (data.errors && data.errors.length > 0) {
+                    console.error(data.errors);
+                    alert(data.errors[0]);
+                } else {
+				
+                    const role = data.result.role;
+                    switch (role) {
+                        case 'ADMIN':
+                            window.location.href = 'admin.html?variable='+username;
+                            break;
+                        case 'PLAYER':
+                        window.location.href = "user.html?variable="+username;
+                            break;
+                        case 'REFEREE':
+                        window.location.href = "referee.html?variable="+username; 
+                            break;
+                        default:
+                            alert('Unknown role');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing your request.');
+            });
+        }
+    </script>
+</body>
+</html>

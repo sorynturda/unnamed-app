@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Page</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+        .input-group {
+            display: flex;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .input-group input[type="text"] {
+            margin-right: 10px;
+        }
+        .message-container {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-top: 10px;
+        }
+        .result-item {
+            border-bottom: 1px solid #ccc; /* Add bottom border */
+            padding: 10px;
+            margin-bottom: 10px;
+            text-align: center; /* Center text */
+        }
+        .delete-button {
+            background-color: red; /* Red background color */
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="match-requests-table-container">
+            <h2>Match Requests</h2>
+            <table class="result-table" id="matchRequestsTable">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Match</th>
+                    </tr>
+                </thead>
+                <tbody id="matchRequestsBody"></tbody>
+            </table>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Enter username">
+            <select id="role">
+                <option value="PLAYER">Player</option>
+                <option value="REFEREE">Referee</option>
+                <option value="ADMIN">Admin</option>
+            </select> <!-- Dropdown menu for role -->
+            <button onclick="getInfo()">Get Info</button>
+            <button onclick="getFiltered()">Get Filtered</button>
+            <button onclick="getAllUsers()">Get All</button>
+            <button onclick="updateUser()" style="background-color: orange;">Update</button> <!-- Add Update button -->
+            <button onclick="deleteUser()" class="delete-button">Delete</button>
+            <button onclick="clearInfo()">Clear</button>
+        </div>
+        <div class="message-container" id="messageContainer">
+            <div class="message" id="message"></div>
+        </div>
+        <div id="filteredResult"></div>
+    </div>
+
+
+
+    <script>
+        let currentUserName = '';
+
+        function setCurrentUserName(name) {
+            currentUserName = name;
+        }
+
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const variableValue = urlParams.get('variable');
+
+        setCurrentUserName(variableValue);
+
+        console.log(variableValue);
+        if(variableValue == null)window.location.href = 'login.html';
+        function getInfo() {
+            const username = document.getElementById('username').value;
+            fetch(`http://192.168.56.222:8080/homepage/admin/getInfo?username=${username}`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.errors[0]);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const messageDiv = document.getElementById('message');
+                if (data.result) {
+                    const userInfo = `<p>Name: ${data.result.name}</p><p>Role: ${data.result.role}</p>`;
+                    messageDiv.innerHTML = userInfo;
+                } else {
+                    messageDiv.innerText = 'User does not exist';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user information:', error);
+                document.getElementById('message').innerText = error.message;
+            });
+        }
+
+        function getFiltered() {
+    const usernameElement = document.getElementById('username'); // Change 'name' to 'username'
+    if (!usernameElement) {
+        console.error('Username input element not found');
+        return;
+    }
+
+    const username = usernameElement.value;
+    fetch(`http://192.168.56.222:8080/homepage/admin/getFiltered?name=${username}`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to fetch filtered information');
+        }
+        return response.json();
+    })
+    .then(data => {
+        const resultDiv = document.getElementById('filteredResult');
+        resultDiv.innerHTML = ''; // Clear previous results
+        if (data.result && data.result.length > 0) {
+            data.result.forEach(item => {
+                const resultItem = document.createElement('div');
+                resultItem.classList.add('result-item');
+                resultItem.innerHTML = `<p>Name: ${item.name}</p>
+                                        <p>Date: ${new Date(item.date).toLocaleString()}</p>
+                                        <p>Referee: ${item.referee}</p>
+                                        <p>Player 1: ${item.player1}</p>
+                                        <p>Player 2: ${item.player2}</p>
+                                        <p>Score: ${item.score}</p>`;
+                resultDiv.appendChild(resultItem);
+            });
+        } else {
+            resultDiv.innerHTML = '<p>No matching results found</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching filtered information:', error);
+        document.getElementById('message').innerText = 'Error fetching filtered information';
+    });
+}
+
+function updateUser() {
+            const username = document.getElementById('username').value;
+            const userRole = document.getElementById('role').value; // Get role from the dropdown menu
+            const formData = {
+                name: username,
+                role: userRole
+            };
+            console.log(formData);
+            fetch('http://192.168.56.222:8080/homepage/admin/updateUser', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update user');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const messageDiv = document.getElementById('message');
+                if (data.successMessage) {
+                    messageDiv.innerText = 'User successfully updated';
+                } else {
+                    messageDiv.innerText = 'Failed to update user';
+                }
+            })
+            .catch(error => {
+                console.error('Error updating user:', error);
+                document.getElementById('message').innerText = 'Error updating user';
+            });
+        }
+
+function getAllUsers() {
+            fetch('http://192.168.56.222:8080/homepage/admin/getAll')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const resultDiv = document.getElementById('filteredResult');
+                resultDiv.innerHTML = ''; // Clear previous results
+                if (data.result && data.result.length > 0) {
+                    data.result.forEach(user => {
+                        const userItem = document.createElement('div');
+                        userItem.classList.add('result-item');
+                        userItem.innerHTML = `<p>Name: ${user.name}</p>
+                                              <p>Role: ${user.role}</p>`;
+                        resultDiv.appendChild(userItem);
+                    });
+                } else {
+                    resultDiv.innerHTML = '<p>No users found</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching users:', error);
+                document.getElementById('message').innerText = 'Error fetching users';
+            });
+        }
+
+        function clearInfo() {
+            // Clear the message and result containers
+            document.getElementById('message').innerText = '';
+            document.getElementById('filteredResult').innerHTML = '';
+        }
+
+        function deleteUser() {
+            const username = document.getElementById('username').value;
+            fetch(`http://192.168.56.222:8080/homepage/admin/deleteUser?deleteUserInfo=${username}`, {
+                method: 'PUT'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete user');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const messageDiv = document.getElementById('message');
+                if (data.successMessage) {
+                    messageDiv.innerText = 'User successfully deleted';
+                } else {
+                    messageDiv.innerText = 'Failed to delete user';
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting user:', error);
+                document.getElementById('message').innerText = 'Error deleting user';
+            });
+        }
+
+        function getMatchRequests() {
+    fetch('http://192.168.56.222:8080/homepage/match/getRequests')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch match requests');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const matchRequestsBody = document.getElementById('matchRequestsBody');
+            matchRequestsBody.innerHTML = ''; // Clear previous content
+
+            if (data.result && data.result.length > 0) {
+                data.result.forEach(request => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${request.playerName}</td>
+                        <td>${request.matchId}</td>
+                        <td>
+                            <button class="accept-btn" data-match-id="${request.matchId}" data-player="${request.playerName}">Accept</button>
+                            <button class="deny-btn" data-match-id="${request.matchId}" data-player="${request.playerName}">Deny</button>
+                        </td>
+                    `;
+                    matchRequestsBody.appendChild(row);
+                });
+
+                // Add event listeners for Accept and Deny buttons
+                const acceptButtons = document.querySelectorAll('.accept-btn');
+                const denyButtons = document.querySelectorAll('.deny-btn');
+
+                acceptButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const matchId = button.getAttribute('data-match-id');
+                        const player = button.getAttribute('data-player');
+                        confirmMatch(matchId, player, 'YES');
+                    });
+                });
+
+                denyButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const matchId = button.getAttribute('data-match-id');
+                        const player = button.getAttribute('data-player');
+                        confirmMatch(matchId, player, 'NO');
+                    });
+                });
+            } else {
+                matchRequestsBody.innerHTML = '<tr><td colspan="3">No match requests found</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching match requests:', error);
+            const matchRequestsBody = document.getElementById('matchRequestsBody');
+            matchRequestsBody.innerHTML = '<tr><td colspan="3">Error fetching match requests</td></tr>';
+        });
+}
+
+function confirmMatch(matchId, player, confirmation) {
+    const transformedString = encodeURIComponent(matchId);
+    getMatchRequests(); // Refresh the table after confirmation
+    fetch(`http://192.168.56.222:8080/homepage/match/matchResponse?matchId=${transformedString}&player=${player}&confirm=${confirmation}`, {
+        method: 'GET' // Assuming your backend accepts GET requests for confirmation
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to confirm match');
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            // Handle success response if needed
+            console.log('Match confirmed:', data);
+            
+        })
+        .catch(error => {
+            console.error('Error confirming match:', error);
+            // Handle error if needed
+        });
+
+        
+}
+
+
+
+
+        // Call getMatchRequests when the page loads
+        window.onload = function() {
+            getMatchRequests();
+        };
+    </script>
+</body>
+</html>

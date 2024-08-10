@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration</title>
+</head>
+<body>
+    <h1>Registration</h1>
+    <form id="registrationForm" onsubmit="register(event)">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username"><br><br>
+        
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email"><br><br>
+        
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password"><br><br>
+        
+        <p>Role:</p>
+        <input type="radio" id="player" name="role" value="PLAYER">
+        <label for="player">Player</label><br>
+        <input type="radio" id="referee" name="role" value="REFEREE">
+        <label for="referee">Referee</label><br><br>
+        
+        <button type="submit">Register</button>
+    </form>
+
+    <script>
+        function register(event) {
+            event.preventDefault(); // Prevent the default form submission
+            
+            // Get the form data
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const role = document.querySelector('input[name="role"]:checked').value;
+            
+            // Validate inputs
+            if (!isName(username)) {
+                alert('The username is not valid!');
+                return;
+            }
+
+            if (!isEmail(email)) {
+                alert('The email is not valid!');
+                return;
+            }
+
+            if (!isGoodPassword(password)) {
+                alert('The password is not valid! It must have at least 8 characters, an uppercase letter, and a symbol.');
+                return;
+            }
+            
+            // Make the POST request to the registration endpoint
+            fetch('http://192.168.56.222:8080/homepage/user/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: username,
+                    email: email,
+                    password: password,
+                    role: role
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Registration failed');
+                }
+                // If registration is successful, redirect to the login page
+                window.location.href = 'login.html';
+            })
+            .catch(error => {
+                console.error('Registration error:', error);
+                // Display an alert with the error message
+                alert('Registration failed: Unknown error');
+            });
+        }
+
+        function isName(name) {
+            const regex = /^[a-zA-Z]+$/;
+            return regex.test(name);
+        }
+
+        function isEmail(email) {
+            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return regex.test(email);
+        }
+
+        function isGoodPassword(password) {
+            const hasEightCharacters = password.length >= 8;
+            const containsUppercase = /[A-Z]/.test(password);
+            const containsSymbol = /[!@#$%^&*()-_+=<>,.?/\\|]/.test(password);
+            return hasEightCharacters && containsUppercase && containsSymbol;
+        }
+    </script>
+</body>
+</html>

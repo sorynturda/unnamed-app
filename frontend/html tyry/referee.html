@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referee Page</title>
+    <style>
+        .scrollable-list {
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            padding: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .box {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+        .result-list {
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 200px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to the Referee Page</h1>
+
+    <!-- Container for referee-specific content -->
+    <div class="container">
+        <button onclick="setScore()">Set Score</button>
+        <div id="welcomeContainer"></div> <!-- Container for the welcome message -->
+        
+        <!-- Container for the match list -->
+        <div class="scrollable-list" id="matchList"></div>
+        
+        <!-- Dropdown table for match selection -->
+        <select id="matchSelect" onchange="selectMatch()">
+            <option value="">Select Match</option>
+        </select>
+
+        <!-- New box with text field, button, and result list -->
+        <div class="box">
+            <input type="text" id="searchField" placeholder="Enter search criteria">
+            <button onclick="searchMatches()">Search</button>
+            <div class="result-list" id="resultList"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUserName = '';
+
+        function setCurrentUserName(name) {
+            currentUserName = name;
+        }
+
+        function updateWelcomeMessage() {
+            const welcomeContainer = document.getElementById('welcomeContainer');
+            welcomeContainer.innerHTML = `Welcome ${currentUserName}!`;
+        }
+
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const variableValue = urlParams.get('variable');
+
+        setCurrentUserName(variableValue);
+        updateWelcomeMessage();
+
+        if (variableValue == null) window.location.href = 'login.html';
+
+        // Function to set the score
+        function setScore() {
+            const selectedMatch = document.getElementById('matchSelect').value;
+            const score = prompt("Enter the score (e.g., '3-2'):");
+            if (score !== null) {
+                // Make API call to set the score
+                setMatchScore(selectedMatch, score);
+            }
+        }
+
+        // Function to make API call to set the score
+        async function setMatchScore(matchName, score) {
+            const url = `http://192.168.56.222:8080/homepage/user/setScore?matchName=${encodeURIComponent(matchName)}&score=${encodeURIComponent(score)}`;
+            const response = await fetch(url, { method: 'PUT' });
+            if (response.ok) {
+                alert("Score has been set successfully.");
+            } else {
+                alert("Failed to set the score.");
+            }
+        }
+
+        // Function to make API call and display match list
+        async function getMatchList() {
+            const response = await fetch(`http://192.168.56.222:8080/homepage/user/getSchedule?refereeName=${currentUserName}`);
+            const data = await response.json();
+            const matchListContainer = document.getElementById('matchList');
+            matchListContainer.innerHTML = ''; // Clear previous content
+
+            if (data.result.length > 0) {
+                data.result.forEach(match => {
+                    matchListContainer.innerHTML += `<div>Name: ${match.name}, Date: ${match.date}, Players: ${match.player1} vs ${match.player2}, Score: ${match.score !== null ? match.score : 'Not set'}</div>`;
+                    
+                    // Add match name to dropdown table
+                    const matchSelect = document.getElementById('matchSelect');
+                    const option = document.createElement('option');
+                    option.text = match.name;
+                    option.value = match.name;
+                    matchSelect.add(option);
+                });
+            } else {
+                matchListContainer.innerHTML = 'No matches found';
+            }
+        }
+
+        // Call getMatchList when the page loads
+        window.onload = getMatchList;
+
+        // Function to handle match selection from dropdown table
+        function selectMatch() {
+            const selectedMatch = document.getElementById('matchSelect').value;
+            alert(`Selected match: ${selectedMatch}`);
+        }
+
+        // Function to search matches based on the criteria
+        async function searchMatches() {
+            
+            const searchField = document.getElementById('searchField').value;
+            console.log(encodeURIComponent(searchField));
+            const url = `http://192.168.56.222:8080/homepage/user/getFiltered?name=${encodeURIComponent(searchField)}`;
+            const response = await fetch(url, { method: 'GET' });
+            const data = await response.json();
+            const resultList = document.getElementById('resultList');
+            resultList.innerHTML = ''; // Clear previous results
+
+            if (data.result && data.result.length > 0) {
+                data.result.forEach(match => {
+                    resultList.innerHTML += `<div>Name: ${match.name}, Date: ${match.date}, Players: ${match.player1} vs ${match.player2}, Score: ${match.score !== null ? match.score : 'Not set'}</div>`;
+                });
+            } else {
+                resultList.innerHTML = data.errors ? data.errors.join('<br>') : 'No matches found';
+            }
+        }
+    </script>
+</body>
+</html>

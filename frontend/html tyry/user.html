@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+        .button-group {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .button-group button {
+            margin-right: 10px;
+        }
+        .dropdown-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .match-dropdown {
+            width: 200px;
+            margin-right: 10px;
+        }
+        .signup-button {
+            background-color: green;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        .match-list {
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .match-list-item {
+            margin-bottom: 5px;
+        }
+        .notification {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div id="welcomeContainer"></div>
+    <div class="container">
+        <div class="button-group">
+            <button onclick="getMatches()">Get Matches</button>
+            <button onclick="getMatch()">Get Match</button>
+        </div>
+        <div class="dropdown-container" id="dropdownContainer" style="display: none;">
+            <select id="matchDropdown" class="match-dropdown"></select>
+            <button onclick="signupForMatch()" class="signup-button">Sign Up</button>
+        </div>
+        <div class="match-list" id="matchList" style="display: none;">
+            <h3>Match List</h3>
+        </div>
+        <div id="matchInfoContainer"></div>
+        <div id="notificationContainer"></div>
+    </div>
+
+    <script>
+        let currentUserName = '';
+
+        function setCurrentUserName(name) {
+            currentUserName = name;
+        }
+
+        function updateWelcomeMessage() {
+            const welcomeContainer = document.getElementById('welcomeContainer');
+            welcomeContainer.innerHTML = `Welcome ${currentUserName}!`;
+        }
+
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const variableValue = urlParams.get('variable');
+
+        setCurrentUserName(variableValue);
+        updateWelcomeMessage();
+
+        console.log(variableValue);
+        if(variableValue == null)window.location.href = 'login.html';
+        function getMatches() {
+            fetch('http://192.168.56.222:8080/homepage/match/getAll')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch matches');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const matches = data.result;
+                    const dropdown = document.getElementById('matchDropdown');
+                    dropdown.innerHTML = ''; // Clear previous options
+
+                    const matchListContainer = document.getElementById('matchList');
+                    matchListContainer.innerHTML = ''; // Clear previous matches
+
+                    matches.forEach(match => {
+                        const option = document.createElement('option');
+                        option.text = match.name;
+                        dropdown.add(option);
+
+                        const matchInfo = document.createElement('div');
+                        matchInfo.classList.add('match-info');
+                        matchInfo.innerHTML = `
+                            <p>Name: ${match.name}</p>
+                            <p>Date: ${new Date(match.date).toLocaleString()}</p>
+                            <hr>
+                        `;
+                        matchListContainer.appendChild(matchInfo);
+                        matchListContainer.style.display = 'block';
+                    });
+
+                    document.getElementById('dropdownContainer').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching matches:', error);
+                    alert('Error fetching matches');
+                });
+        }
+
+        function getMatch() {
+            const selectElement = document.getElementById('matchDropdown');
+            const selectedMatchName = selectElement.options[selectElement.selectedIndex].value;
+            const transformedString = encodeURIComponent(selectedMatchName);
+
+            const apiUrl = `http://192.168.56.222:8080/homepage/match/getMatch?matchName=${transformedString}`;
+
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch match information');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const matchInfoContainer = document.getElementById('matchInfoContainer');
+                    matchInfoContainer.innerHTML = ''; // Clear previous match information
+
+                    if (data.result) {
+                        const matchInfo = `<p>Name: ${data.result.name}</p>
+                                          <p>Date: ${data.result.date}</p>
+                                          <p>Referee: ${data.result.referee}</p>
+                                          <p>Player 1: ${data.result.player1 || 'N/A'}</p>
+                                          <p>Player 2: ${data.result.player2 || 'N/A'}</p>
+                                          <p>Score: ${data.result.score || 'N/A'}</p>`;
+                        matchInfoContainer.innerHTML = matchInfo;
+                    } else {
+                        matchInfoContainer.innerHTML = '<p>No match information available</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching match information:', error);
+                    const matchInfoContainer = document.getElementById('matchInfoContainer');
+                    matchInfoContainer.innerHTML = '<p>Error fetching match information</p>';
+                });
+        }
+
+        function signupForMatch() {
+            const selectElement = document.getElementById('matchDropdown');
+            const selectedMatchName = selectElement.options[selectElement.selectedIndex].value;
+            const transformedString = encodeURIComponent(selectedMatchName);
+
+            const apiUrl = `http://192.168.56.222:8080/homepage/match/matchRequest?playerName=${currentUserName}&matchName=${transformedString}`;
+
+            console.log(currentUserName);
+            console.log(transformedString);
+
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to sign up for the match');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.result) {
+                    displayNotification('Successfully signed up for the match. You will receive an email with further details.');
+                } else {
+                    displayNotification('Failed to sign up for the match. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error signing up for the match:', error);
+                displayNotification('Failed to sign up for the match. Please try again.');
+            });
+        }
+
+        function displayNotification(message) {
+            const notificationContainer = document.getElementById('notificationContainer');
+            notificationContainer.innerHTML = `<div class="notification">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
